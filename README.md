@@ -2,6 +2,8 @@
 
 SpaceLLama is a powerful browser extension that leverages OLLAMA to provide quick and efficient web page summarization. It offers a seamless way to distill the essence of any web content, saving you time and enhancing your browsing experience.
 
+![SpaceLLama](./dist/spacellama.png)
+
 ## Features
 
 - **One-Click Summarization**: Quickly summarize any web page with a single click.
