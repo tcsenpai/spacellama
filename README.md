@@ -4,6 +4,8 @@ SpaceLLama is a powerful browser extension that leverages OLLAMA to provide quic
 
 ![SpaceLLama](./dist/spacellama.png)
 
+**[Download it from the Mozilla Extensions store!](https://addons.mozilla.org/en-US/firefox/addon/spacellama/)**
+
 ## Features
 
 - **One-Click Summarization**: Quickly summarize any web page with a single click.
