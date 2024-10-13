@@ -13,6 +13,8 @@ SpaceLLama is a powerful browser extension that leverages OLLAMA to provide quic
 - **Customizable OLLAMA Settings**: Easily configure the OLLAMA endpoint and model through the options page.
 - **Markdown Rendering**: Summaries are rendered in Markdown for better readability and formatting.
 - **Error Handling**: Robust error handling with informative messages for troubleshooting.
+- **Token Limit Handling**: Ability to set a token limit for the summary.
+- **Recursive Summarization with Context Chunking**: Recursively summarizes content that exceeds the token limit by breaking it into smaller chunks, summarizing each chunk, and then combining the summaries to provide a more comprehensive summary (only if the token limit is exceeded).
 
 ## How It Works
 
