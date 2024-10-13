@@ -33,63 +33,18 @@ async function summarizeContent(content, systemPrompt) {
 
   const maxContentTokens = tokenLimit - estimateTokenCount(systemPrompt) - 100; // Reserve 100 tokens for safety
 
+  console.log(`Starting summarization process. Token limit: ${tokenLimit}`);
+
   try {
-    console.log(`Using system prompt: ${systemPrompt}`);
-    let summary = "";
-    let chunks = splitContentIntoChunks(content, maxContentTokens);
-
-    for (let chunk of chunks) {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: `${systemPrompt}\n\nFollow the above instructions and summarize the following text:\n\n${chunk}`,
-          model: model,
-          stream: false,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP error! status: ${response.status}, message: ${errorText}`
-        );
-      }
-
-      const data = await response.json();
-      summary += data.response + "\n\n";
-    }
-
-    if (chunks.length > 1) {
-      // If we had multiple chunks, summarize the summary
-      const finalResponse = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: `${systemPrompt}\n\nFollow the above instructions and provide a final summary of the following summaries:\n\n${summary}`,
-          model: model,
-          stream: false,
-        }),
-      });
-
-      if (!finalResponse.ok) {
-        const errorText = await finalResponse.text();
-        throw new Error(
-          `HTTP error! status: ${finalResponse.status}, message: ${errorText}`
-        );
-      }
-
-      const finalData = await finalResponse.json();
-      summary = finalData.response;
-    }
-
-    return summary.trim();
+    let { summary, chunkCount, recursionDepth } = await recursiveSummarize(content, systemPrompt, maxContentTokens, endpoint, model);
+    console.log("Final summary completed.");
+    return {
+      summary: typeof summary === 'string' ? summary.trim() : JSON.stringify(summary),
+      chunkCount,
+      recursionDepth,
+    };
   } catch (error) {
-    console.error("Error details:", error);
+    console.error("Error in summarizeContent:", error);
     error.details = {
       endpoint: endpoint,
       model: model,
@@ -99,34 +54,82 @@ async function summarizeContent(content, systemPrompt) {
   }
 }
 
+async function recursiveSummarize(content, systemPrompt, maxContentTokens, endpoint, model, depth = 0) {
+  console.log(`Recursive summarization depth: ${depth}`);
+  const chunks = splitContentIntoChunks(content, maxContentTokens);
+  console.log(`Split content into ${chunks.length} chunks`);
+
+  if (chunks.length === 1) {
+    console.log("Single chunk, summarizing directly");
+    return {
+      summary: await summarizeChunk(chunks[0], systemPrompt, endpoint, model),
+      chunkCount: 1,
+      recursionDepth: depth,
+    };
+  }
+
+  let summaries = [];
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(`Summarizing chunk ${i + 1} of ${chunks.length}`);
+    const chunkSummary = await summarizeChunk(chunks[i], systemPrompt, endpoint, model);
+    summaries.push(chunkSummary);
+  }
+
+  const combinedSummaries = summaries.join("\n\n");
+  if (estimateTokenCount(combinedSummaries) <= maxContentTokens) {
+    console.log("Combined summaries fit within token limit, finalizing summary");
+    return {
+      summary: await summarizeChunk(combinedSummaries, systemPrompt, endpoint, model),
+      chunkCount: chunks.length,
+      recursionDepth: depth,
+    };
+  } else {
+    console.log("Combined summaries exceed token limit, recursing");
+    const result = await recursiveSummarize(combinedSummaries, systemPrompt, maxContentTokens, endpoint, model, depth + 1);
+    return {
+      ...result,
+      chunkCount: chunks.length + result.chunkCount,
+    };
+  }
+}
+
+async function summarizeChunk(chunk, systemPrompt, endpoint, model) {
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt: `${systemPrompt}\n\nFollow the above instructions and summarize the following text:\n\n${chunk}`,
+      model: model,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.response;
+}
+
 function estimateTokenCount(text) {
   return Math.ceil(text.length / 4);
 }
 
 function splitContentIntoChunks(content, maxTokens) {
   const chunks = [];
+  const words = content.split(/\s+/);
   let currentChunk = "";
 
-  const sentences = content.split(/(?<=[.!?])\s+/);
-
-  for (let sentence of sentences) {
-    if (estimateTokenCount(currentChunk + sentence) > maxTokens) {
-      if (currentChunk) {
-        chunks.push(currentChunk.trim());
-        currentChunk = "";
-      }
-      if (estimateTokenCount(sentence) > maxTokens) {
-        // If a single sentence is too long, split it
-        while (sentence) {
-          const chunk = sentence.slice(0, maxTokens * 4); // Approximate characters
-          chunks.push(chunk.trim());
-          sentence = sentence.slice(maxTokens * 4);
-        }
-      } else {
-        currentChunk = sentence;
-      }
+  for (const word of words) {
+    if (estimateTokenCount(currentChunk + " " + word) > maxTokens) {
+      chunks.push(currentChunk.trim());
+      currentChunk = word;
     } else {
-      currentChunk += " " + sentence;
+      currentChunk += (currentChunk ? " " : "") + word;
     }
   }
 

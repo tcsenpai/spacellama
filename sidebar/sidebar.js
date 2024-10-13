@@ -40,8 +40,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 if (response && response.summary) {
-                  // Render the Markdown content
-                  summaryDiv.innerHTML = marked.parse(response.summary);
+                  let warningHtml = "";
+                  if (response.chunkCount > 1) {
+                    warningHtml = `
+                      <div class="warning" style="background-color: #fff3cd; color: #856404; padding: 10px; margin-bottom: 10px; border-radius: 4px;">
+                        <strong>Warning:</strong> The content was split into ${response.chunkCount} chunks for summarization.
+                        Recursive summarization depth: ${response.recursionDepth}.
+                        This may affect the quality and coherence of the summary, and might result in slower performance.
+                      </div>
+                    `;
+                  }
+
+                  let summaryText;
+                  if (typeof response.summary === 'string') {
+                    summaryText = response.summary;
+                  } else if (typeof response.summary === 'object') {
+                    // Convert JSON to Markdown
+                    summaryText = Object.entries(response.summary)
+                      .map(([key, value]) => `## ${key}\n\n${value}`)
+                      .join('\n\n');
+                  } else {
+                    summaryText = JSON.stringify(response.summary);
+                  }
+
+                  // Render the Markdown content with warning if applicable
+                  summaryDiv.innerHTML = warningHtml + marked.parse(summaryText);
                   tokenCountDiv.textContent = `Token count: ${response.tokenCount}`;
                 } else if (response && response.error) {
                   handleError(response.error, response.details);
