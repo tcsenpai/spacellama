@@ -2,9 +2,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const summarizeButton = document.getElementById("summarize");
   const summaryDiv = document.getElementById("summary");
   const openOptionsButton = document.getElementById("open-options");
+  const tokenCountDiv = document.createElement("div");
+  tokenCountDiv.id = "token-count";
+  tokenCountDiv.style.marginTop = "10px";
+  tokenCountDiv.style.fontStyle = "italic";
+
+  summarizeButton.parentNode.insertBefore(tokenCountDiv, summarizeButton.nextSibling);
 
   summarizeButton.addEventListener("click", () => {
     summaryDiv.innerHTML = "<p>Summarizing...</p>";
+    tokenCountDiv.textContent = "";
     summarizeButton.disabled = true;
 
     browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -35,8 +42,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (response && response.summary) {
                   // Render the Markdown content
                   summaryDiv.innerHTML = marked.parse(response.summary);
+                  tokenCountDiv.textContent = `Token count: ${response.tokenCount}`;
                 } else if (response && response.error) {
                   handleError(response.error, response.details);
+                  if (response.tokenCount) {
+                    tokenCountDiv.textContent = `Token count: ${response.tokenCount}`;
+                  }
                 } else {
                   handleError("Unexpected response from summarization");
                 }

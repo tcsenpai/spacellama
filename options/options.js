@@ -20,6 +20,7 @@ async function saveOptions(e) {
   const model = document.getElementById("model").value;
   const systemPrompt = document.getElementById("system-prompt").value;
   const status = document.getElementById("status");
+  const tokenLimit = document.getElementById("token-limit").value || 4096;
   // Ensure the endpoint doesn't end with /api/generate
   const cleanEndpoint = endpoint.replace(/\/api\/generate\/?$/, "");
   status.textContent = "Validating endpoint...";
@@ -31,6 +32,7 @@ async function saveOptions(e) {
         ollamaEndpoint: cleanEndpoint,
         ollamaModel: model,
         systemPrompt: systemPrompt,
+        tokenLimit: parseInt(tokenLimit),
       })
       .then(() => {
         status.textContent = "Options saved and endpoint validated.";
@@ -49,12 +51,14 @@ async function restoreOptions() {
     "ollamaEndpoint",
     "ollamaModel",
     "systemPrompt",
+    "tokenLimit",
   ]);
   const endpoint = result.ollamaEndpoint || "http://localhost:11434";
   const defaultSystemPrompt = "You are a helpful AI assistant. Summarize the given text concisely.";
   document.getElementById("endpoint").value = endpoint;
   document.getElementById("model").value = result.ollamaModel || "llama2";
   document.getElementById("system-prompt").value = result.systemPrompt || defaultSystemPrompt;
+  document.getElementById("token-limit").value = result.tokenLimit || 4096;
   const isValid = await validateEndpoint(endpoint);
   updateEndpointStatus(isValid);
 }
@@ -67,3 +71,4 @@ document.getElementById("endpoint").addEventListener("blur", async (e) => {
   const isValid = await validateEndpoint(e.target.value);
   updateEndpointStatus(isValid);
 });
+

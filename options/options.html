@@ -25,6 +25,10 @@
           <label for="model">OLLAMA Model:</label>
           <input type="text" id="model" placeholder="llama2" />
         </div>
+        <div class="form-group">
+          <label for="token-limit">Token Limit:</label>
+          <input type="number" id="token-limit" min="1000" step="1000" placeholder="4096" />
+        </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
         <div class="form-group">
           <label for="system-prompt">System Prompt:</label>
