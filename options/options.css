@@ -1,90 +1,104 @@
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f5f5f5;
-    color: #333;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f5f5f5;
+  color: #333;
 }
 
 .container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 40px 20px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
 }
 
 h1 {
-    font-size: 28px;
-    margin-bottom: 30px;
-    color: #2c3e50;
+  font-size: 28px;
+  margin-bottom: 30px;
+  color: #2c3e50;
 }
 
 .form-group {
-    margin-bottom: 20px;
+  margin-bottom: 20px;
 }
 
 label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    color: #34495e;
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #34495e;
 }
 
 .input-group {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 input[type="text"] {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-    border: 1px solid #bdc3c7;
-    border-radius: 5px;
-    transition: border-color 0.3s ease;
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #bdc3c7;
+  border-radius: 5px;
+  transition: border-color 0.3s ease;
 }
 
 input[type="text"]:focus {
-    outline: none;
-    border-color: #3498db;
+  outline: none;
+  border-color: #3498db;
 }
 
 .status-indicator {
-    margin-left: 10px;
-    font-size: 20px;
+  margin-left: 10px;
+  font-size: 20px;
 }
 
 .btn {
-    display: inline-block;
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+  display: inline-block;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
 .btn-primary {
-    background-color: #3498db;
-    color: white;
+  background-color: #3498db;
+  color: white;
 }
 
 .btn-primary:hover {
-    background-color: #2980b9;
+  background-color: #2980b9;
 }
 
 .status-message {
-    margin-top: 20px;
-    padding: 10px;
-    border-radius: 5px;
-    font-weight: bold;
+  margin-top: 20px;
+  padding: 10px;
+  border-radius: 5px;
+  font-weight: bold;
 }
 
 .status-message.success {
-    background-color: #2ecc71;
-    color: white;
+  background-color: #2ecc71;
+  color: white;
 }
 
 .status-message.error {
-    background-color: #e74c3c;
-    color: white;
+  background-color: #e74c3c;
+  color: white;
+}
+
+textarea {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #bdc3c7;
+  border-radius: 5px;
+  transition: border-color 0.3s ease;
+  resize: vertical;
+}
+textarea:focus {
+  outline: none;
+  border-color: #3498db;
 }

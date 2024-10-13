@@ -88,3 +88,38 @@ h1 {
 #open-options {
     margin-top: 20px;
 }
+
+.form-group {
+    margin-top: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+#save-prompt {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    }
+    
+#summary, #system-prompt {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+#summary {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
