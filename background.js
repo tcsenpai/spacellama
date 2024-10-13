@@ -28,7 +28,7 @@ async function summarizeContent(content, systemPrompt) {
   const endpoint = `${
     settings.ollamaEndpoint || "http://localhost:11434"
   }/api/generate`;
-  const model = settings.ollamaModel || "llama2";
+  const model = settings.ollamaModel || "llama3.1:8b";
   const tokenLimit = settings.tokenLimit || 4096;
 
   const maxContentTokens = tokenLimit - estimateTokenCount(systemPrompt) - 100; // Reserve 100 tokens for safety

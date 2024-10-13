@@ -58,7 +58,9 @@ async function restoreOptions() {
   document.getElementById("endpoint").value = endpoint;
   document.getElementById("model").value = result.ollamaModel || "llama2";
   document.getElementById("system-prompt").value = result.systemPrompt || defaultSystemPrompt;
-  document.getElementById("token-limit").value = result.tokenLimit || 4096;
+  
+  await updateTokenLimit();
+  
   const isValid = await validateEndpoint(endpoint);
   updateEndpointStatus(isValid);
 }
@@ -72,3 +74,21 @@ document.getElementById("endpoint").addEventListener("blur", async (e) => {
   updateEndpointStatus(isValid);
 });
 
+async function loadModelTokens() {
+  const response = await fetch(browser.runtime.getURL('model_tokens.json'));
+  return await response.json();
+}
+
+async function updateTokenLimit() {
+  const modelTokens = await loadModelTokens();
+  const model = document.getElementById("model").value;
+  const tokenLimitInput = document.getElementById("token-limit");
+  
+  if (model in modelTokens) {
+    tokenLimitInput.value = modelTokens[model];
+  } else {
+    tokenLimitInput.value = 4096; // Default value
+  }
+}
+
+document.getElementById("model").addEventListener("change", updateTokenLimit);
