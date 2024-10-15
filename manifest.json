@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "SpaceLLama",
-  "version": "1.2",
+  "version": "1.3",
   "description": "Summarize web pages using Ollama. Supports custom models, token limits, system prompts, chunking, and more. See https://github.com/tcsenpai/spacellama for more information.",
   "permissions": ["activeTab", "storage", "<all_urls>", "tabs"],
   "browser_action": {

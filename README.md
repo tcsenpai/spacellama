@@ -48,6 +48,10 @@ The extension uses the `marked` library to render Markdown content in the summar
 
 SpaceLLama processes web page content locally through your configured OLLAMA endpoint. No data is sent to external servers beyond what you configure. Always ensure you're using a trusted OLLAMA setup, especially if using a remote endpoint.
 
+## FAQ
+
+- If you get a 403 error, you probably need to set the environment variable `OLLAMA_ORIGINS` to "\*" on your ollama server. On Windows, you will have to set the environment variable in the `SYSTEM` environment, not just the `USER` environment.
+
 ## Contributing
 
 Contributions to SpaceLLama are welcome! Please feel free to submit issues, feature requests, or pull requests to help improve the extension.

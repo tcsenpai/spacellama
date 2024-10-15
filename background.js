@@ -156,6 +156,14 @@ async function summarizeChunk(
     }),
   });
 
+  // TODO Add bespoke-minicheck validation here
+  // LINK https://ollama.com/library/bespoke-minicheck
+  let factCheck = false;
+  if (factCheck) {
+    let bespokeResponse = await bespokeMinicheck(chunk, summary);
+    console.log(bespokeResponse);
+  }
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
@@ -190,4 +198,33 @@ function splitContentIntoChunks(content, maxTokens) {
   }
 
   return chunks;
+}
+
+async function bespokeMinicheck(chunk, summary) {
+  let bespoke_prompt = `
+    Document: ${chunk}
+    Claim: This is a correct summary of the document:\n\n ${summary},
+  `;
+
+  let bespoke_body = {
+    prompt: bespoke_prompt,
+    model: "bespoke-minicheck:latest",
+    stream: false,
+    num_ctx: 30000, // Model is 32k but we want to leave some buffer
+    options: {
+      temperature: 0.0,
+      num_predict: 2,
+    },
+  };
+
+  let bespoke_response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(bespoke_body),
+  });
+  // TODO Error handling
+  let response_text = await bespoke_response.text();
+  return response_text
 }
