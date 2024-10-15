@@ -1,3 +1,6 @@
+let isFirefox = typeof InstallTrigger !== 'undefined';  // Firefox has `InstallTrigger`
+let browser = isFirefox ? window.browser : chrome; 
+
 document.addEventListener("DOMContentLoaded", () => {
   const summarizeButton = document.getElementById("summarize");
   const summaryDiv = document.getElementById("summary");
@@ -8,12 +11,15 @@ document.addEventListener("DOMContentLoaded", () => {
   tokenCountDiv.style.fontStyle = "italic";
 
   summarizeButton.parentNode.insertBefore(tokenCountDiv, summarizeButton.nextSibling);
+  // Correctly define systemPromptTextarea
+  const systemPromptTextarea = document.getElementById("system-prompt");
 
   summarizeButton.addEventListener("click", () => {
     summaryDiv.innerHTML = "<p>Summarizing...</p>";
     tokenCountDiv.textContent = "";
     summarizeButton.disabled = true;
 
+    // Get the current tab content
     browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       browser.tabs.sendMessage(
         tabs[0].id,
@@ -28,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           if (response && response.content) {
             const systemPrompt = systemPromptTextarea.value;
+            // Send message to background script for summarization
             browser.runtime.sendMessage(
               { action: "summarize", content: response.content, systemPrompt: systemPrompt },
               (response) => {
@@ -50,7 +57,6 @@ document.addEventListener("DOMContentLoaded", () => {
                       </div>
                     `;
                   }
-
                   let summaryText;
                   if (typeof response.summary === 'string') {
                     summaryText = response.summary;
@@ -59,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     summaryText = Object.entries(response.summary)
                       .map(([key, value]) => `## ${key}\n\n${value}`)
                       .join('\n\n');
-                  } else {
+                    } else {
                     summaryText = JSON.stringify(response.summary);
                   }
 
@@ -98,7 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
     summarizeButton.disabled = false;
   }
 });
-
 const systemPromptTextarea = document.getElementById("system-prompt");
 const savePromptButton = document.getElementById("save-prompt");
 

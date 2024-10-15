@@ -1,11 +1,66 @@
 console.log("Background script loaded");
 
-browser.browserAction.onClicked.addListener(() => {
-  browser.sidebarAction.toggle();
-});
+let isFirefox = typeof InstallTrigger !== 'undefined';  // Firefox has `InstallTrigger`
+let browser = isFirefox ? window.browser : chrome;   
 
+// Check if chrome.action or browser.action is available
+if (isFirefox && browser.browserAction) {
+  // Firefox specific: Use browserAction
+  browser.browserAction.onClicked.addListener(() => {
+    console.log("Firefox: Toggling sidebar");
+    browser.sidebarAction.toggle();
+  });
+} else if (browser.action) {
+  // Chrome specific: Use action and inject the sidebar iframe
+  browser.action.onClicked.addListener((tab) => {
+    console.log("Injecting sidebar iframe into the page");
+
+    // Use the tab object properly here
+    browser.scripting.executeScript({
+      target: { tabId: tab.id }, // Pass the tab ID correctly
+      function: injectSidebar
+    }, () => {
+      if (browser.runtime.lastError) {
+        console.error("Error injecting sidebar:", browser.runtime.lastError.message);
+      } else {
+        console.log("Sidebar injected successfully.");
+      }
+    });
+  });
+}
+
+
+
+// Function to inject the sidebar as an iframe in browsers like Chrome
+function injectSidebar() {
+  // Check if the sidebar iframe is already injected
+  if (document.getElementById('sidebar-frame')) {
+    console.log("Sidebar is already injected.");
+    return;
+  }
+  // Create an iframe for the sidebar
+  const sidebarFrame = document.createElement('iframe');
+  sidebarFrame.id = 'sidebar-frame';  // Add an ID to prevent multiple injections
+  sidebarFrame.src = chrome.runtime.getURL('sidebar/sidebar.html'); // Use the sidebar.html
+  sidebarFrame.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 300px;
+    height: 100%;
+    border: none;
+    z-index: 9999;
+    background-color: white;
+  `;
+
+  // Append the sidebar iframe to the body of the active webpage
+  document.body.appendChild(sidebarFrame);
+}
+
+// Background script listens for the 'summarize' action
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "summarize") {
+    console.log("Summarization request received in background script.");
     const tokenCount = estimateTokenCount(request.content);
     summarizeContent(request.content, request.systemPrompt)
       .then((summary) => {
@@ -19,7 +74,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
           tokenCount,
         });
       });
-    return true; // Indicates that we will send a response asynchronously
+      return true; // Indicates that we will send a response asynchronously
   }
 });
 

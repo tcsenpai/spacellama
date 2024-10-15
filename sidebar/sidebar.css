@@ -47,26 +47,33 @@ h1 {
 }
 
 .summary-container {
-    margin-top: 20px;
-    padding: 15px;
+    margin-top: 10px;
+    padding: 10px;
     background-color: white;
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 #summary h1, #summary h2, #summary h3 {
-    margin-top: 15px;
-    margin-bottom: 10px;
+    margin-top: 0px;
+    margin-bottom: 0px;
     color: #2c3e50;
 }
 
 #summary p {
+    margin-top: 10px;
     margin-bottom: 10px;
     line-height: 1.6;
 }
 
 #summary ul, #summary ol {
     padding-left: 20px;
+    margin-bottom: 10px;
+    margin-top: 10px;
+    
+}
+
+#summary li {
     margin-bottom: 10px;
 }
 
@@ -90,7 +97,7 @@ h1 {
 }
 
 .form-group {
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 label {
@@ -120,6 +127,6 @@ textarea {
 }
 
 #summary {
-  white-space: pre-wrap;
+  /* white-space: pre-wrap; */
   word-wrap: break-word;
 }
