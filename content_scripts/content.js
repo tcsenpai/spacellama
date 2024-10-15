@@ -1,3 +1,6 @@
+let browser = (typeof chrome !== 'undefined') ? chrome : (typeof browser !== 'undefined') ? browser : null;
+
+
 function getPageContent() {
     console.log("getPageContent called");
     return document.body.innerText;
