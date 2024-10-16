@@ -16,31 +16,6 @@ function updateEndpointStatus(isValid) {
   statusElement.title = isValid ? "Endpoint is valid" : "Endpoint is invalid";
 }
 
-async function updateTokenLimit() {
-  try {
-    const modelTokens = await loadModelTokens();
-    const model = document.getElementById("model").value;
-    const tokenLimitInput = document.getElementById("token-limit");
-
-    if (model in modelTokens) {
-      tokenLimitInput.value = modelTokens[model];
-    } else {
-      tokenLimitInput.value = 4000; // Default value, modified from 4096 to meet even requirement
-    }
-  } catch (error) {
-    console.error("Error updating token limit:", error.message || error);
-  }
-}
-
-async function loadModelTokens() {
-  try {
-    const response = await fetch(browser.runtime.getURL('model_tokens.json'));
-    return await response.json();
-  } catch (error) {
-    console.error("Error loading model tokens:", error.message || error);
-  }
-}
-
 async function saveOptions(e) {
   e.preventDefault();
   const endpoint = document.getElementById("endpoint").value;
@@ -85,16 +60,9 @@ function restoreOptions() {
     document.getElementById("endpoint").value = result.ollamaEndpoint || "http://localhost:11434";
     document.getElementById("model").value = result.ollamaModel || "llama2";
     document.getElementById("system-prompt").value = result.systemPrompt || "You are a helpful AI assistant. Summarize the given text concisely.";
-
-    // Call to updateTokenLimit remains async
-    updateTokenLimit().then(() => {
-      validateEndpoint(result.ollamaEndpoint).then(isValid => {
-        updateEndpointStatus(isValid);
-      });
-    });
+    document.getElementById("token-limit").value = result.tokenLimit || 4096;
   });
 }
-
 
 document.addEventListener("DOMContentLoaded", restoreOptions);
 document
