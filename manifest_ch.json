@@ -23,7 +23,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["sidebar/sidebar.html", "sidebar/sidebar.js", "sidebar/sidebar.css", "sidebar/marked.min.js", "model_tokens.json"],
+      "resources": ["sidebar/sidebar.html", "sidebar/sidebar.js", "sidebar/sidebar.css", "sidebar/marked.min.js"],
       "matches": ["http://*/*", "https://*/*"]
     }
   ]
