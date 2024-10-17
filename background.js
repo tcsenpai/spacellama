@@ -90,15 +90,13 @@ async function summarizeContent(content, systemPrompt) {
   const model = settings.ollamaModel || "llama3.1:8b";
   const tokenLimit = settings.tokenLimit || 4096;
 
-  const maxContentTokens = tokenLimit - estimateTokenCount(systemPrompt) - 100; // Reserve 100 tokens for safety
-
   console.log(`Starting summarization process. Token limit: ${tokenLimit}`);
 
   try {
     let { summary, chunkCount, recursionDepth } = await recursiveSummarize(
       content,
       systemPrompt,
-      maxContentTokens,
+      tokenLimit,
       endpoint,
       model
     );
@@ -123,29 +121,14 @@ async function summarizeContent(content, systemPrompt) {
 async function recursiveSummarize(
   content,
   systemPrompt,
-  maxContentTokens,
+  tokenLimit,
   endpoint,
   model,
   depth = 0
 ) {
   console.log(`Recursive summarization depth: ${depth}`);
-  const chunks = splitContentIntoChunks(content, maxContentTokens);
+  const chunks = splitContentIntoChunks(content, tokenLimit, systemPrompt);
   console.log(`Split content into ${chunks.length} chunks`);
-
-  if (chunks.length === 1) {
-    console.log("Single chunk, summarizing directly");
-    return {
-      summary: await summarizeChunk(
-        chunks[0],
-        systemPrompt,
-        endpoint,
-        model,
-        maxContentTokens
-      ),
-      chunkCount: 1,
-      recursionDepth: depth,
-    };
-  }
 
   let summaries = [];
   for (let i = 0; i < chunks.length; i++) {
@@ -154,32 +137,26 @@ async function recursiveSummarize(
       chunks[i],
       systemPrompt,
       endpoint,
-      model
+      model,
+      tokenLimit
     );
     summaries.push(chunkSummary);
   }
-
   const combinedSummaries = summaries.join("\n\n");
-  if (estimateTokenCount(combinedSummaries) <= maxContentTokens) {
-    console.log(
-      "Combined summaries fit within token limit, finalizing summary"
-    );
+
+  if (chunks.length <= 1) {
+    console.log("Single chunk, summarizing directly");
     return {
-      summary: await summarizeChunk(
-        combinedSummaries,
-        systemPrompt,
-        endpoint,
-        model
-      ),
+      summary: combinedSummaries,
       chunkCount: chunks.length,
       recursionDepth: depth,
     };
   } else {
-    console.log("Combined summaries exceed token limit, recursing");
+    console.log("Multiple chunks, summarizing recursively");
     const result = await recursiveSummarize(
       combinedSummaries,
       systemPrompt,
-      maxContentTokens,
+      tokenLimit,
       endpoint,
       model,
       depth + 1
@@ -196,7 +173,7 @@ async function summarizeChunk(
   systemPrompt,
   endpoint,
   model,
-  maxContentTokens
+  tokenLimit
 ) {
   const response = await fetch(endpoint, {
     method: "POST",
@@ -207,7 +184,7 @@ async function summarizeChunk(
       prompt: `${systemPrompt}\n\nFollow the above instructions and summarize the following text:\n\n${chunk}`,
       model: model,
       stream: false,
-      num_ctx: maxContentTokens,
+      num_ctx: tokenLimit,
     }),
   });
 
@@ -234,7 +211,8 @@ function estimateTokenCount(text) {
   return Math.ceil(text.length / 4);
 }
 
-function splitContentIntoChunks(content, maxTokens) {
+function splitContentIntoChunks(content, tokenLimit, systemPrompt) {  
+  const maxTokens = tokenLimit - estimateTokenCount(systemPrompt) - 100; // Reserve 100 tokens for safety
   const chunks = [];
   const words = content.split(/\s+/);
   let currentChunk = "";
