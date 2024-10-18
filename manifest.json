@@ -27,5 +27,5 @@
     "page": "options/options.html",
     "open_in_tab": true
   },
-  "web_accessible_resources": ["sidebar/marked.min.js", "model_tokens.json"]
+  "web_accessible_resources": ["sidebar/marked.min.js"]
 }
