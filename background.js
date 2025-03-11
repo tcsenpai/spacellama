@@ -1,7 +1,7 @@
 console.log("Background script loaded");
 
-let isFirefox = typeof InstallTrigger !== 'undefined';  // Firefox has `InstallTrigger`
-let browser = isFirefox ? window.browser : chrome;   
+let isFirefox = typeof InstallTrigger !== "undefined"; // Firefox has `InstallTrigger`
+let browser = isFirefox ? window.browser : chrome;
 
 // Check if chrome.action or browser.action is available
 if (isFirefox && browser.browserAction) {
@@ -16,32 +16,36 @@ if (isFirefox && browser.browserAction) {
     console.log("Injecting sidebar iframe into the page");
 
     // Use the tab object properly here
-    browser.scripting.executeScript({
-      target: { tabId: tab.id }, // Pass the tab ID correctly
-      function: injectSidebar
-    }, () => {
-      if (browser.runtime.lastError) {
-        console.error("Error injecting sidebar:", browser.runtime.lastError.message);
-      } else {
-        console.log("Sidebar injected successfully.");
+    browser.scripting.executeScript(
+      {
+        target: { tabId: tab.id }, // Pass the tab ID correctly
+        function: injectSidebar,
+      },
+      () => {
+        if (browser.runtime.lastError) {
+          console.error(
+            "Error injecting sidebar:",
+            browser.runtime.lastError.message
+          );
+        } else {
+          console.log("Sidebar injected successfully.");
+        }
       }
-    });
+    );
   });
 }
-
-
 
 // Function to inject the sidebar as an iframe in browsers like Chrome
 function injectSidebar() {
   // Check if the sidebar iframe is already injected
-  if (document.getElementById('sidebar-frame')) {
+  if (document.getElementById("sidebar-frame")) {
     console.log("Sidebar is already injected.");
     return;
   }
   // Create an iframe for the sidebar
-  const sidebarFrame = document.createElement('iframe');
-  sidebarFrame.id = 'sidebar-frame';  // Add an ID to prevent multiple injections
-  sidebarFrame.src = chrome.runtime.getURL('sidebar/sidebar.html'); // Use the sidebar.html
+  const sidebarFrame = document.createElement("iframe");
+  sidebarFrame.id = "sidebar-frame"; // Add an ID to prevent multiple injections
+  sidebarFrame.src = chrome.runtime.getURL("sidebar/sidebar.html"); // Use the sidebar.html
   sidebarFrame.style.cssText = `
     position: fixed;
     top: 0;
@@ -74,7 +78,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
           tokenCount,
         });
       });
-      return true; // Indicates that we will send a response asynchronously
+    return true; // Indicates that we will send a response asynchronously
   }
 });
 
@@ -175,18 +179,49 @@ async function summarizeChunk(
   model,
   tokenLimit
 ) {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      prompt: `${systemPrompt}\n\nFollow the above instructions and summarize the following text:\n\n${chunk}`,
-      model: model,
-      stream: false,
-      num_ctx: tokenLimit,
-    }),
-  });
+  let response;
+  let maxRetries = 3;
+  let retryCount = 0;
+  let retryDelay = 1000;
+  // We will retry the request if it fails (three times)
+  // Each time we will wait longer before retrying (1, 2, 4 seconds)
+  // Each request will timeout after 25 * retryDelay
+  while (retryCount < maxRetries) {
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: `${systemPrompt}\n\nFollow the above instructions and summarize the following text:\n\n${chunk}`,
+          model: model,
+          stream: false,
+          num_ctx: tokenLimit,
+        }),
+        signal: AbortSignal.timeout(25 * retryDelay),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      break; // Success - exit the retry loop
+    } catch (error) {
+      console.error("Error in summarizeChunk:", error);
+      retryCount++;
+
+      if (retryCount >= maxRetries) {
+        throw new Error(
+          `Failed to summarize chunk after ${maxRetries} retries: ${error.message}`
+        );
+      }
+
+      console.log(`Retry ${retryCount}/${maxRetries} after ${retryDelay}ms`);
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      retryDelay *= 2;
+    }
+  }
 
   // TODO Add bespoke-minicheck validation here
   // LINK https://ollama.com/library/bespoke-minicheck
@@ -194,13 +229,6 @@ async function summarizeChunk(
   if (factCheck) {
     let bespokeResponse = await bespokeMinicheck(chunk, summary);
     console.log(bespokeResponse);
-  }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `HTTP error! status: ${response.status}, message: ${errorText}`
-    );
   }
 
   const data = await response.json();
@@ -211,7 +239,7 @@ function estimateTokenCount(text) {
   return Math.ceil(text.length / 4);
 }
 
-function splitContentIntoChunks(content, tokenLimit, systemPrompt) {  
+function splitContentIntoChunks(content, tokenLimit, systemPrompt) {
   const maxTokens = tokenLimit - estimateTokenCount(systemPrompt) - 100; // Reserve 100 tokens for safety
   const chunks = [];
   const words = content.split(/\s+/);
@@ -259,5 +287,5 @@ async function bespokeMinicheck(chunk, summary) {
   });
   // TODO Error handling
   let response_text = await bespoke_response.text();
-  return response_text
+  return response_text;
 }
