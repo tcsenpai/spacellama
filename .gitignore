@@ -1,3 +1,7 @@
 extension
 pack_extension.sh
 SpaceLLama.zip
+yarn.lock
+dist/*.xpi
+dist/*.zip
+node_modules
