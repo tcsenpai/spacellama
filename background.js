@@ -108,8 +108,9 @@ async function summarizeContent(content, systemPrompt) {
     return {
       summary:
         typeof summary === "string" ? summary.trim() : JSON.stringify(summary),
-      chunkCount,
-      recursionDepth,
+      // NOTE Chunk count and recursion depth are disabled if not needed
+      //chunkCount,
+      //recursionDepth,
     };
   } catch (error) {
     console.error("Error in summarizeContent:", error);
