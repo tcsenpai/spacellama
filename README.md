@@ -32,8 +32,18 @@ You can customize SpaceLLama's behavior through the options page:
 
 1. Click the "Open Settings" button in the sidebar.
 2. Set your preferred OLLAMA endpoint (default is `http://localhost:11434`).
-3. Choose the OLLAMA model you want to use (default is `llama2`).
-4. Save your settings.
+3. Choose the OLLAMA model you want to use (default is `llama3.1:latest`).
+4. Set the token limit for the summary (default is `16384`).
+5. Set the system prompt for the summary (default is `You are a helpful AI assistant. Summarize the given text concisely, without leaving out informations. You should aim to give a summary that is highly factual, useful and rich but still shorter than the original content, while not being too short.`).
+6. Save your settings.
+
+## Manual Installation
+
+1. Clone the repository.
+2. Install `npm install -g web-ext`
+3. Run `chmod +x build_xpi_webext.sh` to make the script executable.
+4. Run `./build_xpi_webext.sh` to build the extension.
+5. Install the extension in your browser through `about:debugging`
 
 ## Technical Details
 
