@@ -86,7 +86,7 @@ function restoreOptions() {
       ollamaEndpoint: "http://localhost:11434",
       ollamaModel: "llama3.1:latest",
       systemPrompt:
-        "You are a helpful AI assistant. Summarize the given text concisely.",
+        "You are a helpful AI assistant. Summarize the given text concisely, without leaving out informations. You should aim to give a summary that is highly factual, useful and rich but still shorter than the original content, while not being too short.",
       tokenLimit: 16384,
     },
     function (result) {
