@@ -71,7 +71,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                   // Render the Markdown content with warning if applicable
                   summaryDiv.innerHTML = warningHtml + marked.parse(summaryText);
-                  tokenCountDiv.textContent = `Token count: ${response.tokenCount}`;
+                  // NOTE Token count is disabled if not needed
+                  //tokenCountDiv.textContent = `Token count: ${response.tokenCount}`;
                 } else if (response && response.error) {
                   handleError(response.error, response.details);
                   if (response.tokenCount) {

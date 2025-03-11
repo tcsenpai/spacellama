@@ -63,6 +63,10 @@ Contributions to SpaceLLama are welcome! Please feel free to submit issues, feat
 Licensed under the [Do What The Fuck You Want To Public License](LICENSE.md).
 See [LICENSE.md](LICENSE.md) for more details.
 
+## Credits
+
+- [Background Image](https://www.pexels.com/) - I could not find the right image; if you know the author, please let me know so I can give them the credits they deserve.
+
 ---
 
 SpaceLLama: Bringing the power of OLLAMA to your browser for effortless web page summarization.
