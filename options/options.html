@@ -34,6 +34,23 @@
             placeholder="16384"
           />
         </div>
+        <div class="option-group">
+          <label for="youtube-api-key">YouTube API Key (optional):</label>
+          <input
+            type="text"
+            id="youtube-api-key"
+            name="youtube-api-key"
+            placeholder="Enter your YouTube API key"
+          />
+          <p class="help-text">
+            Used to fetch YouTube video transcripts.
+            <a
+              href="https://developers.google.com/youtube/v3/getting-started"
+              target="_blank"
+              >Get a key</a
+            >
+          </p>
+        </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
         <div class="form-group">
           <label for="system-prompt">System Prompt:</label>

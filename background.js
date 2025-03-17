@@ -290,3 +290,37 @@ async function bespokeMinicheck(chunk, summary) {
   let response_text = await bespoke_response.text();
   return response_text;
 }
+
+// Add this to your background.js
+let extensionLogs = [];
+const MAX_LOGS = 1000;
+
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "log") {
+    // Store log
+    extensionLogs.push({
+      message: request.message,
+      data: request.data,
+      timestamp: request.timestamp,
+      url: request.url,
+      tabId: sender.tab ? sender.tab.id : "unknown",
+    });
+
+    // Also log to the console
+    console.log("[Content.js log]", request.message, request.data);
+
+    // Trim logs if they get too large
+    if (extensionLogs.length > MAX_LOGS) {
+      extensionLogs = extensionLogs.slice(-MAX_LOGS);
+    }
+
+    return true;
+  }
+
+  if (request.action === "getLogs") {
+    sendResponse({ logs: extensionLogs });
+    return true;
+  }
+
+  // Handle other messages...
+});

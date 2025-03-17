@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" type="text/css" href="sidebar.css">
-  <script src="marked.min.js"></script>
-</head>
-<body>
-  <div class="container">
-    <h1>OLLAMA Summarizer</h1>
-    <button id="summarize" class="btn btn-primary">Summarize</button>
-    <div id="summary" class="summary-container"></div>
-    <div class="form-group">
-      <label for="system-prompt">System Prompt:</label>
-      <textarea id="system-prompt" rows="3" class="form-control"></textarea>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" type="text/css" href="sidebar.css" />
+    <script src="marked.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>OLLAMA Summarizer</h1>
+      <button id="summarize" class="btn btn-primary">Summarize</button>
+      <div id="summary" class="summary-container"></div>
+      <div class="form-group">
+        <label for="system-prompt">System Prompt:</label>
+        <textarea id="system-prompt" rows="3" class="form-control"></textarea>
+      </div>
+      <button id="save-prompt" class="btn btn-secondary">Save Prompt</button>
+      <button id="open-options" class="btn btn-secondary">Open Settings</button>
+      <div class="button-container">
+        <button id="view-logs" class="button">View Debug Logs</button>
+      </div>
     </div>
-    <button id="save-prompt" class="btn btn-secondary">Save Prompt</button>
-    <button id="open-options" class="btn btn-secondary">Open Settings</button>
-  </div>
-  <script src="sidebar.js"></script>
-</body>
+    <script src="sidebar.js"></script>
+  </body>
 </html>

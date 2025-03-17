@@ -53,6 +53,7 @@ async function saveOptions(e) {
   const systemPrompt = document.getElementById("system-prompt").value;
   const status = document.getElementById("status");
   const tokenLimit = document.getElementById("token-limit").value || 16384;
+  const youtubeApiKey = document.getElementById("youtube-api-key").value;
   // Ensure the endpoint doesn't end with /api/generate
   const cleanEndpoint = endpoint.replace(/\/api\/generate\/?$/, "");
   status.textContent = "Validating endpoint...";
@@ -65,6 +66,7 @@ async function saveOptions(e) {
         ollamaModel: model,
         systemPrompt: systemPrompt,
         tokenLimit: parseInt(tokenLimit),
+        youtubeApiKey: youtubeApiKey,
       });
       status.textContent = "Options saved and endpoint validated.";
       setTimeout(() => {
@@ -88,6 +90,7 @@ function restoreOptions() {
       systemPrompt:
         "You are a helpful AI assistant. Summarize the given text concisely, without leaving out informations. You should aim to give a summary that is highly factual, useful and rich but still shorter than the original content, while not being too short.",
       tokenLimit: 16384,
+      youtubeApiKey: "",
     },
     function (result) {
       document.getElementById("endpoint").value =
@@ -97,6 +100,7 @@ function restoreOptions() {
       document.getElementById("system-prompt").value =
         result.systemPrompt ||
         "You are a helpful AI assistant. Summarize the given text concisely.";
+      document.getElementById("youtube-api-key").value = result.youtubeApiKey;
 
       // Call to updateTokenLimit remains async
       updateTokenLimit().then(() => {

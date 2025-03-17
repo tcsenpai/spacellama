@@ -14,7 +14,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["content_scripts/content.js"]
+      "js": ["content_scripts/youtube_handler.js", "content_scripts/content.js"]
     }
   ],
   "options_ui": {
