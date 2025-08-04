@@ -23,7 +23,11 @@
         </div>
         <div class="form-group">
           <label for="model">OLLAMA Model:</label>
-          <input type="text" id="model" placeholder="llama3.1:latest" />
+          <div class="model-input-container" style="position: relative;">
+            <input type="text" id="model" placeholder="llama3.1:8b" />
+            <button type="button" id="refresh-models" class="btn btn-secondary" style="margin-top: 8px; padding: 8px 16px; font-size: 13px;">🔄 Load Available Models</button>
+            <div id="model-list" class="model-list" style="display: none;"></div>
+          </div>
         </div>
         <div class="form-group">
           <label for="token-limit">Token Limit:</label>
@@ -57,6 +61,36 @@
           <textarea id="system-prompt" rows="3" class="form-control"></textarea>
         </div>
       </form>
+      
+      <!-- Developer Test Section -->
+      <div id="developer-section" class="developer-section" style="display: none;">
+        <h3>🛠️ Developer Testing</h3>
+        <div class="test-group">
+          <h4>Connection Test</h4>
+          <button type="button" id="test-connection" class="btn btn-secondary">🔗 Test Ollama Connection</button>
+          <div id="connection-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-group">
+          <h4>API Test</h4>
+          <button type="button" id="test-summarization" class="btn btn-secondary">🤖 Test Summarization</button>
+          <div id="summarization-result" class="test-result"></div>
+        </div>
+        
+        <div class="test-group">
+          <h4>Extension Communication Test</h4>
+          <button type="button" id="test-messaging" class="btn btn-secondary">📨 Test Message Flow</button>
+          <div id="messaging-result" class="test-result"></div>
+        </div>
+      </div>
+      
+      <!-- Developer Toggle -->
+      <div style="margin-top: 40px; text-align: center;">
+        <button type="button" id="toggle-developer" class="btn-link" style="font-size: 12px; color: #6b7280; text-decoration: none; border: none; background: none; cursor: pointer;">
+          Show Developer Tools
+        </button>
+      </div>
+      
       <div id="status" class="status-message"></div>
     </div>
     <script src="options.js"></script>

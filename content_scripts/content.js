@@ -1,683 +1,461 @@
-extensionLog("Content script loading...");
+// SpaceLlama Content Script - Enhanced Version
+(function() {
+  'use strict';
 
-let browser =
-  typeof chrome !== "undefined"
-    ? chrome
-    : typeof browser !== "undefined"
-    ? browser
-    : null;
+  // Browser API detection
+  const browserAPI = typeof chrome !== "undefined" ? chrome : 
+                     typeof browser !== "undefined" ? browser : null;
 
-// Function to log messages to both console and background script
-function extensionLog(message, data = null) {
-  // Log to console
-  if (data) {
-    console.log(`[SpaceLLama] ${message}`, data);
-  } else {
-    console.log(`[SpaceLLama] ${message}`);
+  if (!browserAPI) {
+    console.error('[SpaceLlama] Browser API not detected');
+    return;
   }
 
-  // Send to background script
-  try {
-    browser.runtime
-      .sendMessage({
-        action: "log",
-        message: message,
-        data: data,
-        timestamp: new Date().toISOString(),
-        url: window.location.href,
-      })
-      .catch((err) => console.error("Error sending log:", err));
-  } catch (e) {
-    console.error("Error in extensionLog:", e);
-  }
-}
+  // Configuration constants
+  const CONFIG = {
+    LOG_PREFIX: '[SpaceLlama]',
+    MAX_CONTENT_LENGTH: 1000000, // 1MB
+    MIN_DESCRIPTION_LENGTH: 200,
+    YOUTUBE_PATTERNS: [
+      'youtube.com/watch',
+      'youtu.be/',
+      '/watch?v='
+    ]
+  };
 
-// YouTube subtitle handler for SpaceLLama
-extensionLog("YouTube handler functionality initializing...");
-
-// Function to check if the current page is a YouTube video
-function isYouTubeVideo(url) {
-  return (
-    url.includes("youtube.com/watch") ||
-    url.includes("youtu.be/") ||
-    url.includes("/watch?v=")
-  );
-}
-
-// Extract video ID from YouTube URL
-function extractVideoId(url) {
-  let videoId = "";
-
-  if (url.includes("youtube.com/watch")) {
-    const urlParams = new URLSearchParams(new URL(url).search);
-    videoId = urlParams.get("v");
-  } else if (url.includes("youtu.be/")) {
-    videoId = url.split("youtu.be/")[1].split("?")[0];
-  } else if (url.includes("/watch?v=")) {
-    // Adding youtube.com to the URL if it's missing (e.g. invidious)
-    url = "https://youtube.com/watch?v=" + url.split("/watch?v=")[1];
-    const urlParams = new URLSearchParams(new URL(url).search);
-    videoId = urlParams.get("v");
-  }
-
-  return videoId;
-}
-
-// Add this function to fetch subtitles using YouTube API
-async function fetchSubtitlesWithApi(videoId) {
-  try {
-    // Get the API key from storage
-    const result = await browser.storage.sync.get({ youtubeApiKey: "" });
-    const apiKey = result.youtubeApiKey;
-
-    if (!apiKey) {
-      extensionLog("No YouTube API key provided in settings");
-      return null;
+  // Enhanced logging system
+  class Logger {
+    constructor(prefix = CONFIG.LOG_PREFIX) {
+      this.prefix = prefix;
     }
 
-    extensionLog("Attempting to fetch captions with YouTube API");
-
-    // First, get the caption tracks available for this video
-    const captionListUrl = `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${apiKey}`;
-
-    const response = await fetch(captionListUrl);
-    if (!response.ok) {
-      extensionLog("YouTube API request failed:", response.status);
-      return null;
-    }
-
-    const data = await response.json();
-
-    if (!data.items || data.items.length === 0) {
-      extensionLog("No caption tracks found via API");
-      return null;
-    }
-
-    // Find Eglish captions or use the first available
-    const englishCaption =
-      data.items.find(
-        (item) =>
-          item.snippet.language === "en" ||
-          item.snippet.language === "en-US" ||
-          (item.snippet.name &&
-            item.snippet.name.toLowerCase().includes("english"))
-      ) || data.items[0];
-
-    // Get the caption content
-    const captionId = englishCaption.id;
-    const captionUrl = `https://www.googleapis.com/youtube/v3/captions/${captionId}?key=${apiKey}`;
-
-    // Note: This might require OAuth2 authentication which is beyond the scope of a simple extension
-    // If this fails, we'll need to fall back to other methods
-    const captionResponse = await fetch(captionUrl);
-    if (!captionResponse.ok) {
-      extensionLog("Failed to fetch caption content:", captionResponse.status);
-      return null;
-    }
-
-    const captionData = await captionResponse.json();
-    return captionData.text;
-  } catch (error) {
-    extensionLog("Error fetching subtitles with API:", error);
-    return null;
-  }
-}
-
-// Update the fetchYouTubeSubtitles function to try the API first
-async function fetchYouTubeSubtitles(videoId) {
-  extensionLog("Attempting to fetch subtitles for video ID:", videoId);
-  try {
-    // First try: Use YouTube API if key is provided
-    const apiSubtitles = await fetchSubtitlesWithApi(videoId);
-    if (apiSubtitles) {
-      extensionLog("Successfully fetched subtitles using YouTube API");
-      return apiSubtitles;
-    }
-
-    // Method 1: Try to get subtitles directly from the page
-    const subtitlesFromPage = getSubtitlesFromPage();
-    if (subtitlesFromPage) {
-      extensionLog("Found subtitles in page");
-      return subtitlesFromPage;
-    }
-
-    // If all methods fail, don't use fallbacks anymore
-    extensionLog("No subtitles found, will use description only");
-    return null;
-  } catch (error) {
-    extensionLog("Error fetching YouTube subtitles:", error);
-    return null;
-  }
-}
-
-// Extract player response data from page
-function getPlayerResponseData() {
-  try {
-    // YouTube stores player data in a script tag or window variable
-    for (const script of document.querySelectorAll("script")) {
-      if (script.textContent.includes("ytInitialPlayerResponse")) {
-        const match = script.textContent.match(
-          /ytInitialPlayerResponse\s*=\s*({.+?});/
-        );
-        if (match && match[1]) {
-          return JSON.parse(match[1]);
-        }
+    log(message, data = null) {
+      const formattedMessage = `${this.prefix} ${message}`;
+      
+      if (data) {
+        console.log(formattedMessage, data);
+      } else {
+        console.log(formattedMessage);
       }
+
+      // Send to background script for centralized logging
+      this.sendToBackground(message, data);
     }
 
-    // Try window variable if available
-    if (typeof window.ytInitialPlayerResponse !== "undefined") {
-      return window.ytInitialPlayerResponse;
+    error(message, error) {
+      console.error(`${this.prefix} ERROR: ${message}`, error);
+      this.sendToBackground(`ERROR: ${message}`, { error: error.message || error });
     }
 
-    return null;
-  } catch (error) {
-    extensionLog("Error getting player response data:", error);
-    return null;
+    warn(message, data = null) {
+      console.warn(`${this.prefix} WARNING: ${message}`, data);
+      this.sendToBackground(`WARNING: ${message}`, data);
+    }
+
+    async sendToBackground(message, data) {
+      // TEMPORARILY DISABLED: Focus on core functionality first
+      // Background logging is causing connection conflicts
+      // Just log locally for now
+      return;
+    }
   }
-}
 
-// Get initial player response from window variable
-function getInitialPlayerResponse() {
-  try {
-    // Look for the data in various possible locations
-    if (typeof window.ytInitialPlayerResponse !== "undefined") {
-      return window.ytInitialPlayerResponse;
+  const logger = new Logger();
+
+  // YouTube-specific functionality
+  class YouTubeHandler {
+    constructor() {
+      this.logger = logger;
     }
 
-    // Try to find it in script tags
-    for (const script of document.querySelectorAll("script:not([src])")) {
-      if (script.textContent.includes("ytInitialPlayerResponse")) {
-        const match = script.textContent.match(
-          /ytInitialPlayerResponse\s*=\s*({.+?});/
-        );
-        if (match && match[1]) {
+    isYouTubeVideo(url) {
+      return CONFIG.YOUTUBE_PATTERNS.some(pattern => url.includes(pattern));
+    }
+
+    extractVideoId(url) {
+      try {
+        const urlObj = new URL(url);
+        
+        if (url.includes('youtube.com/watch')) {
+          return urlObj.searchParams.get('v');
+        } else if (url.includes('youtu.be/')) {
+          return urlObj.pathname.slice(1).split('?')[0];
+        } else if (url.includes('/watch?v=')) {
+          // Handle Invidious and similar platforms
+          const vParam = url.split('/watch?v=')[1];
+          return vParam ? vParam.split('&')[0] : null;
+        }
+      } catch (e) {
+        this.logger.error('Failed to extract video ID', e);
+      }
+      return null;
+    }
+
+    async getMetadata() {
+      const selectors = {
+        title: [
+          'meta[property="og:title"]',
+          'h1.ytd-video-primary-info-renderer',
+          'title'
+        ],
+        description: [
+          'meta[property="og:description"]',
+          'meta[name="description"]',
+          '#description-inline-expander',
+          '#description-text'
+        ],
+        author: [
+          'link[itemprop="name"]',
+          '.ytd-channel-name a',
+          '#owner #channel-name'
+        ],
+        duration: [
+          '.ytp-time-duration',
+          'span[itemprop="duration"]'
+        ],
+        views: [
+          '.view-count',
+          'span[itemprop="interactionCount"]',
+          '#count .ytd-video-view-count-renderer'
+        ],
+        uploadDate: [
+          '#info-strings yt-formatted-string',
+          'span[itemprop="datePublished"]'
+        ]
+      };
+
+      const metadata = {};
+      
+      for (const [key, selectorList] of Object.entries(selectors)) {
+        for (const selector of selectorList) {
           try {
-            return JSON.parse(match[1]);
+            const element = document.querySelector(selector);
+            if (element) {
+              metadata[key] = element.content || element.textContent?.trim() || '';
+              break;
+            }
           } catch (e) {
-            extensionLog("Error parsing ytInitialPlayerResponse:", e);
+            // Continue to next selector
           }
         }
-      }
-    }
-
-    return null;
-  } catch (error) {
-    extensionLog("Error getting initial player response:", error);
-    return null;
-  }
-}
-
-// Extract subtitles from player response data
-function extractSubtitlesFromPlayerResponse(playerResponse) {
-  try {
-    if (!playerResponse || !playerResponse.captions) {
-      return null;
-    }
-
-    const captionTracks =
-      playerResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-    if (!captionTracks || captionTracks.length === 0) {
-      return null;
-    }
-
-    // Find English subtitles or use the first available
-    const englishTrack =
-      captionTracks.find(
-        (track) =>
-          track.languageCode === "en" ||
-          (track.name &&
-            track.name.simpleText &&
-            track.name.simpleText.includes("English"))
-      ) || captionTracks[0];
-
-    if (englishTrack && englishTrack.baseUrl) {
-      // We found a subtitle track URL, but direct fetch might be restricted
-      // For now, we'll extract what we can from the page
-      return null;
-    }
-
-    return null;
-  } catch (error) {
-    extensionLog("Error extracting subtitles from player response:", error);
-    return null;
-  }
-}
-
-// Extract subtitles from initial player response
-function extractSubtitlesFromInitialResponse(initialResponse) {
-  try {
-    if (!initialResponse) return null;
-
-    // Navigate through the complex structure to find captions
-    const captionTracks =
-      initialResponse.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-    if (!captionTracks || captionTracks.length === 0) {
-      return null;
-    }
-
-    // Find English track or use first available
-    const englishTrack =
-      captionTracks.find(
-        (track) =>
-          track.languageCode === "en" ||
-          (track.name?.simpleText && track.name.simpleText.includes("English"))
-      ) || captionTracks[0];
-
-    if (!englishTrack || !englishTrack.baseUrl) {
-      return null;
-    }
-
-    // We have a URL but can't directly fetch it due to CORS
-    // Instead, extract what we can from the visible transcript on the page
-    return null;
-  } catch (error) {
-    extensionLog("Error extracting subtitles from initial response:", error);
-    return null;
-  }
-}
-
-// Get alternative text from video description or comments
-function getAlternativeText() {
-  try {
-    // Try to get the video description
-    const description =
-      document.querySelector("#description-inline-expander, #description-text")
-        ?.textContent || "";
-
-    // Try to get the transcript panel content if it's open
-    const transcriptPanel = document.querySelector(".ytd-transcript-renderer");
-    if (transcriptPanel) {
-      const transcriptItems = transcriptPanel.querySelectorAll(
-        ".ytd-transcript-segment-renderer"
-      );
-      if (transcriptItems && transcriptItems.length > 0) {
-        let transcript = "";
-        transcriptItems.forEach((item) => {
-          transcript += item.textContent + " ";
-        });
-        return transcript.trim();
-      }
-    }
-
-    // If description is substantial, use it
-    if (description.length > 200) {
-      extensionLog(
-        "FALLBACK: Using video description as alternative to transcript",
-        { descriptionLength: description.length }
-      );
-      return (
-        "[FALLBACK: Using video description as alternative to transcript]\n\n" +
-        description
-      );
-    }
-
-    return null;
-  } catch (error) {
-    extensionLog("Error getting alternative text:", error);
-    return null;
-  }
-}
-
-// Try to find auto-generated captions
-function findAutoGeneratedCaptions() {
-  try {
-    // Check if the transcript button is available
-    const transcriptButton = document.querySelector(
-      'button[aria-label*="transcript"], button[aria-label*="Transcript"]'
-    );
-    if (transcriptButton) {
-      // We can't click it programmatically due to security restrictions
-      // But we can inform the user that transcripts are available
-      return "Auto-generated captions may be available. Please click the transcript button in the YouTube player to view them.";
-    }
-
-    // Look for any visible caption elements
-    const visibleCaptions = document.querySelector(".ytp-caption-segment");
-    if (visibleCaptions) {
-      return "Captions are enabled for this video. Please ensure captions are turned on in the YouTube player to see them.";
-    }
-
-    return null;
-  } catch (error) {
-    extensionLog("Error finding auto-generated captions:", error);
-    return null;
-  }
-}
-
-// Extract text from the visible transcript panel if it's open
-function getVisibleTranscript() {
-  try {
-    // This targets the transcript panel that appears when you click "Show Transcript"
-    const transcriptItems = document.querySelectorAll(
-      "ytd-transcript-segment-renderer"
-    );
-    if (transcriptItems && transcriptItems.length > 0) {
-      let transcript = "";
-      transcriptItems.forEach((item) => {
-        // Each segment has text and timestamp
-        const text = item.querySelector("#text")?.textContent || "";
-        transcript += text + " ";
-      });
-      return transcript.trim();
-    }
-    return null;
-  } catch (error) {
-    extensionLog("Error getting visible transcript:", error);
-    return null;
-  }
-}
-
-// Parse subtitles XML into plain text
-function parseSubtitlesXml(xmlText) {
-  const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-  const textElements = xmlDoc.getElementsByTagName("text");
-
-  let subtitles = "";
-  for (let i = 0; i < textElements.length; i++) {
-    subtitles += textElements[i].textContent + " ";
-  }
-
-  return subtitles.trim();
-}
-
-// Try to get subtitles directly from the YouTube page
-function getSubtitlesFromPage() {
-  extensionLog("Attempting to get subtitles from page");
-
-  // First try: Check for transcript panel if it's open
-  const visibleTranscript = getVisibleTranscript();
-  if (visibleTranscript) {
-    extensionLog("Found visible transcript panel");
-    return visibleTranscript;
-  }
-
-  // Second try: YouTube stores caption data in a script tag
-  try {
-    const scriptTags = document.querySelectorAll("script");
-    let captionData = null;
-    let captionTrackData = null;
-
-    // Look for caption tracks in script tags
-    for (const script of scriptTags) {
-      const content = script.textContent;
-
-      // Try different patterns to find caption data
-      if (content.includes('"captionTracks"')) {
-        const match = content.match(/"captionTracks":(\[.*?\])/);
-        if (match && match[1]) {
-          try {
-            captionData = JSON.parse(match[1]);
-            extensionLog("Found caption tracks in script tag");
-            break;
-          } catch (e) {
-            extensionLog("Error parsing caption data:", e);
-          }
-        }
+        metadata[key] = metadata[key] || 'Unknown';
       }
 
-      // Try another pattern
-      if (content.includes('{"captionTracks":')) {
-        const regex = /{"captionTracks":(\[.*?\])}/g;
-        const match = regex.exec(content);
-        if (match && match[1]) {
-          try {
-            captionTrackData = JSON.parse(match[1]);
-            extensionLog("Found caption track data in script tag");
-            break;
-          } catch (e) {
-            extensionLog("Error parsing caption track data:", e);
-          }
-        }
-      }
+      return metadata;
     }
 
-    // Process caption data if found
-    const tracks = captionData || captionTrackData;
-    if (tracks && tracks.length > 0) {
-      // Find English subtitles or use the first available
-      const englishTrack =
-        tracks.find(
-          (track) =>
-            track.languageCode === "en" ||
-            (track.name &&
-              track.name.simpleText &&
-              track.name.simpleText.includes("English"))
-        ) || tracks[0];
+    async getTranscript() {
+      // Try multiple methods to get transcript
+      const methods = [
+        () => this.getTranscriptFromAPI(),
+        () => this.getVisibleTranscript(),
+        () => this.getTranscriptFromPage(),
+        () => this.getTranscriptFromPlayerResponse()
+      ];
 
-      if (englishTrack && englishTrack.baseUrl) {
-        extensionLog("Found subtitle track URL, attempting to fetch");
-
-        // Try to fetch the subtitles directly (may fail due to CORS)
+      for (const method of methods) {
         try {
-          return fetch(englishTrack.baseUrl)
-            .then((response) => response.text())
-            .then((xmlText) => {
-              extensionLog("Successfully fetched subtitle XML");
-              return parseSubtitlesXml(xmlText);
-            })
-            .catch((error) => {
-              extensionLog("Error fetching subtitle XML:", error);
-              return null;
-            });
-        } catch (error) {
-          extensionLog("Error attempting to fetch subtitles:", error);
+          const result = await method();
+          if (result) {
+            this.logger.log('Successfully retrieved transcript');
+            return result;
+          }
+        } catch (e) {
+          this.logger.warn('Transcript method failed', e.message);
         }
       }
+
+      return null;
     }
 
-    // Third try: Look for transcript in the page DOM
-    const transcriptContent = document.querySelector("#transcript-scrollbox");
-    if (transcriptContent) {
-      extensionLog("Found transcript scrollbox");
-      let transcript = "";
-      const segments = transcriptContent.querySelectorAll(".segment");
-      segments.forEach((segment) => {
-        transcript += segment.textContent.trim() + " ";
-      });
+    async getTranscriptFromAPI() {
+      const result = await browserAPI.storage.sync.get({ youtubeApiKey: '' });
+      const apiKey = result.youtubeApiKey;
 
-      if (transcript.length > 100) {
-        return transcript;
+      if (!apiKey) {
+        return null;
+      }
+
+      const videoId = this.extractVideoId(window.location.href);
+      if (!videoId) return null;
+
+      try {
+        // Get available captions
+        const captionListUrl = `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${apiKey}`;
+        const response = await fetch(captionListUrl);
+        
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.items || data.items.length === 0) {
+          return null;
+        }
+
+        // Prefer English captions
+        const caption = data.items.find(item => 
+          ['en', 'en-US'].includes(item.snippet.language) ||
+          item.snippet.name?.toLowerCase().includes('english')
+        ) || data.items[0];
+
+        this.logger.log('Found caption track via API', caption.snippet.language);
+        
+        // Note: Downloading actual caption content requires OAuth
+        return null; // For now, we can't get the actual content
+      } catch (e) {
+        this.logger.error('YouTube API error', e);
+        return null;
       }
     }
 
-    return null;
-  } catch (error) {
-    extensionLog("Error getting subtitles from page:", error);
-    return null;
-  }
-}
+    getVisibleTranscript() {
+      const transcriptItems = document.querySelectorAll('ytd-transcript-segment-renderer');
+      
+      if (transcriptItems.length === 0) {
+        return null;
+      }
 
-// Get video metadata (title, description, etc.)
-function getVideoMetadata() {
-  const title =
-    document.querySelector('meta[property="og:title"]')?.content ||
-    document.querySelector("title")?.textContent ||
-    "";
+      const transcript = Array.from(transcriptItems)
+        .map(item => item.querySelector('#text')?.textContent?.trim())
+        .filter(text => text)
+        .join(' ');
 
-  const description =
-    document.querySelector('meta[property="og:description"]')?.content ||
-    document.querySelector('meta[name="description"]')?.content ||
-    "";
+      return transcript || null;
+    }
 
-  const author =
-    document.querySelector('link[itemprop="name"]')?.content ||
-    document.querySelector(".ytd-channel-name a")?.textContent ||
-    "";
+    getTranscriptFromPage() {
+      try {
+        // Look for transcript data in script tags
+        const scripts = Array.from(document.querySelectorAll('script:not([src])'));
+        
+        for (const script of scripts) {
+          const content = script.textContent;
+          
+          if (content.includes('"captionTracks"')) {
+            const match = content.match(/"captionTracks":(\[.*?\])/);
+            if (match && match[1]) {
+              const tracks = JSON.parse(match[1]);
+              const englishTrack = this.findEnglishTrack(tracks);
+              
+              if (englishTrack?.baseUrl) {
+                // Note: Direct fetch usually fails due to CORS
+                this.logger.log('Found caption track URL');
+                return null; // Can't fetch due to CORS
+              }
+            }
+          }
+        }
+      } catch (e) {
+        this.logger.error('Error parsing transcript from page', e);
+      }
+      
+      return null;
+    }
 
-  return {
-    title,
-    description,
-    author,
-  };
-}
-
-// Update getYouTubeContent to clearly indicate when using description
-async function getYouTubeContent() {
-  extensionLog("getYouTubeContent called");
-  const url = window.location.href;
-  extensionLog("Current URL in getYouTubeContent:", url);
-
-  const videoId = extractVideoId(url);
-  extensionLog("Extracted video ID:", videoId);
-
-  if (!videoId) {
-    extensionLog("No video ID found");
-    return null;
-  }
-
-  extensionLog("Getting metadata and subtitles");
-  const metadata = getVideoMetadata();
-  extensionLog("Metadata retrieved:", metadata.title);
-
-  const subtitles = await fetchYouTubeSubtitles(videoId);
-  extensionLog("Subtitles retrieved:", subtitles ? "yes" : "no");
-
-  if (!subtitles) {
-    extensionLog("No subtitles available");
-    // Get as much context as possible
-    const videoLength = getVideoLength();
-    const viewCount = getViewCount();
-    const uploadDate = getUploadDate();
-
-    return {
-      isYouTube: true,
-      hasSubtitles: false,
-      content:
-        `Title: ${metadata.title}\n\n` +
-        `Description: ${metadata.description}\n\n` +
-        `Author: ${metadata.author}\n\n` +
-        `Video Length: ${videoLength}\n` +
-        `Views: ${viewCount}\n` +
-        `Upload Date: ${uploadDate}\n\n` +
-        `⚠️ NO TRANSCRIPT AVAILABLE: This summary is based only on the video metadata and description.`,
-    };
-  }
-
-  extensionLog("Returning YouTube content with subtitles");
-  return {
-    isYouTube: true,
-    hasSubtitles: true,
-    content: `Title: ${metadata.title}\n\nDescription: ${metadata.description}\n\nAuthor: ${metadata.author}\n\nTranscript:\n${subtitles}`,
-  };
-}
-
-// Helper functions to get additional metadata
-function getVideoLength() {
-  try {
-    return (
-      document.querySelector(".ytp-time-duration")?.textContent ||
-      document.querySelector('span[itemprop="duration"]')?.textContent ||
-      "Unknown"
-    );
-  } catch (e) {
-    return "Unknown";
-  }
-}
-
-function getViewCount() {
-  try {
-    return (
-      document.querySelector(".view-count")?.textContent ||
-      document.querySelector('span[itemprop="interactionCount"]')
-        ?.textContent ||
-      "Unknown"
-    );
-  } catch (e) {
-    return "Unknown";
-  }
-}
-
-function getUploadDate() {
-  try {
-    return (
-      document.querySelector("#info-strings yt-formatted-string")
-        ?.textContent ||
-      document.querySelector('span[itemprop="datePublished"]')?.textContent ||
-      "Unknown"
-    );
-  } catch (e) {
-    return "Unknown";
-  }
-}
-
-// Main content script functionality
-function getPageContent() {
-  extensionLog("getPageContent called");
-
-  // Check if we're on a YouTube video page
-  const url = window.location.href;
-  extensionLog("Current URL in getPageContent:", url);
-
-  if (isYouTubeVideo(url)) {
-    extensionLog("YouTube video detected, fetching subtitles...");
-    return getYouTubeContent()
-      .then((youtubeContent) => {
-        if (youtubeContent) {
-          extensionLog(
-            "YouTube content retrieved:",
-            youtubeContent.hasSubtitles ? "with subtitles" : "without subtitles"
-          );
-          return youtubeContent.content;
+    getTranscriptFromPlayerResponse() {
+      try {
+        // Try to access ytInitialPlayerResponse
+        let playerResponse = null;
+        
+        if (window.ytInitialPlayerResponse) {
+          playerResponse = window.ytInitialPlayerResponse;
         } else {
-          // Fallback to regular page content if YouTube handler fails
-          extensionLog(
-            "YouTube handler failed, falling back to regular content"
-          );
-          return document.body.innerText;
+          // Look in script tags
+          const scripts = document.querySelectorAll('script:not([src])');
+          for (const script of scripts) {
+            if (script.textContent.includes('ytInitialPlayerResponse')) {
+              const match = script.textContent.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
+              if (match && match[1]) {
+                playerResponse = JSON.parse(match[1]);
+                break;
+              }
+            }
+          }
         }
-      })
-      .catch((error) => {
-        extensionLog("Error getting YouTube content:", error);
-        return document.body.innerText;
-      });
+
+        if (!playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks) {
+          return null;
+        }
+
+        const tracks = playerResponse.captions.playerCaptionsTracklistRenderer.captionTracks;
+        const englishTrack = this.findEnglishTrack(tracks);
+        
+        if (englishTrack?.baseUrl) {
+          this.logger.log('Found caption track in player response');
+          return null; // Can't fetch due to CORS
+        }
+      } catch (e) {
+        this.logger.error('Error getting transcript from player response', e);
+      }
+      
+      return null;
+    }
+
+    findEnglishTrack(tracks) {
+      if (!Array.isArray(tracks)) return null;
+      
+      return tracks.find(track => 
+        track.languageCode === 'en' ||
+        track.name?.simpleText?.toLowerCase().includes('english')
+      ) || tracks[0];
+    }
+
+    async getContent() {
+      const url = window.location.href;
+      const videoId = this.extractVideoId(url);
+      
+      if (!videoId) {
+        this.logger.error('No video ID found');
+        return null;
+      }
+
+      const metadata = await this.getMetadata();
+      const transcript = await this.getTranscript();
+
+      if (!transcript) {
+        // Return metadata-only content
+        return {
+          isYouTube: true,
+          hasSubtitles: false,
+          content: this.formatContent(metadata, null)
+        };
+      }
+
+      return {
+        isYouTube: true,
+        hasSubtitles: true,
+        content: this.formatContent(metadata, transcript)
+      };
+    }
+
+    formatContent(metadata, transcript) {
+      let content = `Title: ${metadata.title}\n\n`;
+      
+      if (metadata.author !== 'Unknown') {
+        content += `Author: ${metadata.author}\n`;
+      }
+      
+      if (metadata.duration !== 'Unknown') {
+        content += `Duration: ${metadata.duration}\n`;
+      }
+      
+      if (metadata.views !== 'Unknown') {
+        content += `Views: ${metadata.views}\n`;
+      }
+      
+      if (metadata.uploadDate !== 'Unknown') {
+        content += `Upload Date: ${metadata.uploadDate}\n`;
+      }
+      
+      content += `\nDescription: ${metadata.description}\n\n`;
+      
+      if (transcript) {
+        content += `Transcript:\n${transcript}`;
+      } else {
+        content += `⚠️ NO TRANSCRIPT AVAILABLE: This summary is based only on the video metadata and description.`;
+        
+        // If description is too short, add a more detailed warning
+        if (metadata.description.length < CONFIG.MIN_DESCRIPTION_LENGTH) {
+          content += `\n\nNote: The video description is very short (${metadata.description.length} characters), so the summary may lack detail.`;
+        }
+      }
+      
+      return content;
+    }
   }
 
-  // Regular page content for non-YouTube pages
-  extensionLog("Not a YouTube video, returning regular page content");
-  return document.body.innerText;
-}
+  // Main content handler
+  class ContentHandler {
+    constructor() {
+      this.logger = logger;
+      this.youtubeHandler = new YouTubeHandler();
+    }
 
-// Set up message listener
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  extensionLog("Content script received message:", request);
+    async getPageContent() {
+      const url = window.location.href;
+      
+      // Check if this is a YouTube video
+      if (this.youtubeHandler.isYouTubeVideo(url)) {
+        this.logger.log('YouTube video detected');
+        
+        try {
+          const youtubeContent = await this.youtubeHandler.getContent();
+          if (youtubeContent) {
+            return youtubeContent.content;
+          }
+        } catch (e) {
+          this.logger.error('YouTube handler failed', e);
+        }
+      }
 
-  if (request.action === "getContent") {
-    extensionLog("Getting page content...");
+      // Default to regular page content
+      this.logger.log('Using regular page content extraction');
+      return this.extractRegularContent();
+    }
 
-    // Handle the case where getPageContent might return a Promise
-    const contentResult = getPageContent();
+    extractRegularContent() {
+      try {
+        // Try to get the main content area first
+        const contentSelectors = [
+          'main',
+          'article',
+          '[role="main"]',
+          '#content',
+          '.content',
+          'body'
+        ];
 
-    if (contentResult instanceof Promise) {
-      contentResult
-        .then((content) => {
-          extensionLog(
-            "Sending content (first 100 chars):",
-            content.substring(0, 100)
-          );
+        for (const selector of contentSelectors) {
+          const element = document.querySelector(selector);
+          if (element && element.innerText.length > 100) {
+            const content = element.innerText;
+            
+            // Truncate if too long
+            if (content.length > CONFIG.MAX_CONTENT_LENGTH) {
+              this.logger.warn(`Content truncated from ${content.length} to ${CONFIG.MAX_CONTENT_LENGTH} characters`);
+              return content.substring(0, CONFIG.MAX_CONTENT_LENGTH);
+            }
+            
+            return content;
+          }
+        }
+
+        // Fallback to body
+        return document.body.innerText || 'No content found';
+      } catch (e) {
+        this.logger.error('Error extracting page content', e);
+        return 'Error extracting page content';
+      }
+    }
+  }
+
+  // Initialize content handler
+  const contentHandler = new ContentHandler();
+
+  // Message listener - simplified without background logging conflicts
+  browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('[SpaceLlama] Received message:', request.action);
+
+    if (request.action === 'getContent') {
+      contentHandler.getPageContent()
+        .then(content => {
+          console.log(`[SpaceLlama] Sending content (${content.length} characters)`);
           sendResponse({ content: content });
         })
-        .catch((error) => {
-          extensionLog("Error getting page content:", error);
-          sendResponse({
-            content: "Error retrieving content: " + error.message,
+        .catch(error => {
+          console.error('[SpaceLlama] Failed to get content:', error);
+          sendResponse({ 
+            content: `Error retrieving content: ${error.message}`,
+            error: true 
           });
         });
-      return true; // Indicate that we will send a response asynchronously
-    } else {
-      // Handle synchronous result
-      const content = contentResult;
-      extensionLog(
-        "Sending content (first 100 chars):",
-        content.substring(0, 100)
-      );
-      sendResponse({ content: content });
-      return true; // Still need to return true for Firefox compatibility
+      
+      return true; // Indicates async response
     }
-  }
 
-  return true; // Always return true to indicate we're handling the message
-});
+    return false;
+  });
 
-extensionLog("Content script fully loaded with YouTube handler functionality");
+  console.log('[SpaceLlama] Content script initialized');
+})();
