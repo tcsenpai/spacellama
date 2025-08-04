@@ -59,6 +59,48 @@
     return marked.parse(cleanContent) + thoughtProcessHtml;
   }
 
+  // Create summary actions (copy button, word count, etc.)
+  function createSummaryActions(summaryText) {
+    if (!summaryText || typeof summaryText !== 'string') {
+      return '';
+    }
+
+    // Clean text for word count (remove HTML, think tags, etc.)
+    const cleanText = summaryText
+      .replace(/<think>[\s\S]*?<\/think>/gi, '') // Remove think tags
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .trim();
+    
+    const wordCount = cleanText.split(/\s+/).filter(word => word.length > 0).length;
+    const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // ~200 words per minute
+    
+    return `
+      <div class="summary-actions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div class="summary-stats" style="font-size: 12px; color: #6b7280;">
+          📊 ${wordCount} words • ⏱️ ${readingTime} min read
+        </div>
+        <div class="summary-buttons" style="display: flex; gap: 8px;">
+          <button class="copy-summary-btn" style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow=''">
+            📋 Copy Summary
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     const summarizeButton = document.getElementById("summarize");
     const summaryDiv = document.getElementById("summary");
@@ -234,8 +276,11 @@
           // Process think tags and create collapsible thought process section
           const processedContent = processThinkTags(summaryText);
           
+          // Add copy button and word count
+          const summaryActions = createSummaryActions(summaryText);
+          
           statusDiv.innerHTML = statusBadges;
-          summaryDiv.innerHTML = processedContent;
+          summaryDiv.innerHTML = processedContent + summaryActions;
         } else if (summaryResponse && summaryResponse.error) {
           throw new Error(summaryResponse.error);
         } else {
@@ -403,6 +448,60 @@
         });
       });
     }
+
+    // Event delegation for dynamically created copy button
+    summaryDiv.addEventListener('click', async (event) => {
+      if (event.target.classList.contains('copy-summary-btn')) {
+        const button = event.target;
+        const originalText = button.innerHTML;
+        
+        try {
+          // Get the clean summary text (without HTML and think tags)
+          const summaryContainer = summaryDiv.querySelector('p, div');
+          let textToCopy = '';
+          
+          if (summaryContainer) {
+            // Extract text content, preserving line breaks
+            textToCopy = summaryContainer.innerText || summaryContainer.textContent || '';
+          }
+          
+          if (!textToCopy) {
+            // Fallback: get all text from summary div, excluding actions
+            const tempDiv = summaryDiv.cloneNode(true);
+            const actionsDiv = tempDiv.querySelector('.summary-actions');
+            if (actionsDiv) actionsDiv.remove();
+            const thoughtDiv = tempDiv.querySelector('.thought-process-container');
+            if (thoughtDiv) thoughtDiv.remove();
+            textToCopy = tempDiv.innerText || tempDiv.textContent || '';
+          }
+          
+          // Copy to clipboard
+          await navigator.clipboard.writeText(textToCopy.trim());
+          
+          // Show success feedback
+          button.innerHTML = '✅ Copied!';
+          button.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+          
+          setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+          }, 2000);
+          
+        } catch (error) {
+          console.error('[SpaceLlama] Failed to copy to clipboard:', error);
+          
+          // Show error feedback
+          button.innerHTML = '❌ Failed';
+          button.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+          
+          setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+          }, 2000);
+        }
+      }
+    });
+
 
     // Initialize
     loadSystemPrompt();
