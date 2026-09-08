@@ -80,3 +80,7 @@ See [LICENSE.md](LICENSE.md) for more details.
 ---
 
 SpaceLLama: Bringing the power of OLLAMA to your browser for effortless web page summarization.
+
+## Support
+
+If this project saved you time, you can support my work via [PayPal](https://paypal.me/dacookingsenpai).
